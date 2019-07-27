@@ -973,7 +973,8 @@ static ngx_int_t ngx_http_fastdfs_process_init(ngx_cycle_t *cycle)
 	// do some init here
 	if ((result=fdfs_mod_init()) != 0)
 	{
-		return NGX_ERROR;
+	    // nginx启动，只是这个模块无法使用
+	    // return NGX_ERROR;
 	}
 
 	return NGX_OK;
