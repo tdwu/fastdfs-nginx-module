@@ -245,7 +245,7 @@ int fdfs_mod_init() {
 
         // 不存在的响应模式配置，redirect之外就是proxy
         pReponseMode = iniGetStrValue(NULL, "response_mode", &iniContext);
-        printf("pReponseMode：%s", pReponseMode);
+        logDebug("pReponseMode：%s", pReponseMode);
         if (pReponseMode != NULL) {
             if (strcmp(pReponseMode, "redirect") == 0) {
                 response_mode = FDFS_MOD_REPONSE_MODE_REDIRECT;
@@ -825,7 +825,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             my_group_name, file_id_without_group);
     }
 
-    printf(bSameGroup ? "本节点请求" : "不是本节点请求");
+    logDebug(bSameGroup ? "本节点请求" : "不是本节点请求");
     if (strlen(file_id_without_group) < 22) {
         logError("file: "__FILE__", line: %d, " \
             "file id is too short, length: %d < 22, " \
@@ -909,7 +909,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
     }
 
     if ((result = fdfs_get_file_info_ex1(file_id, false, &file_info)) != 0) {
-        printf("文件在fdfs中不存在");
+        logDebug("文件在fdfs中不存在");
         if (result == ENOENT) {
             http_status = HTTP_NOTFOUND;
         } else if (result == EINVAL) {
@@ -939,9 +939,9 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
         } else {
             bFileExists = true;
         }
-        printf(bFileExists ? "本节点文件存在" : "本节点文件不存在");
+        logDebug(bFileExists ? "本节点文件存在" : "本节点文件不存在");
     } else {
-        printf("不是本节点的请求，所以文件不存在");
+        logDebug("不是本节点的请求，所以文件不存在");
         bFileExists = false;
         memset(&trunkInfo, 0, sizeof(trunkInfo));
     }
@@ -956,13 +956,13 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
         }
     } else {
         char *redirect;
-        printf("文件存在 storage ip:%s", file_info.source_ip_addr);
+        logDebug("文件存在 storage ip:%s", file_info.source_ip_addr);
         //logInfo("source id: %d", file_info.source_id);
         //logInfo("source ip addr: %s", file_info.source_ip_addr);
         //logInfo("create_timestamp: %d", file_info.create_timestamp);
 
         if (bSameGroup && (is_local_host_ip(file_info.source_ip_addr)  || (file_info.create_timestamp > 0 && (time(NULL) -  file_info.create_timestamp > storage_sync_file_max_delay)))) {
-            printf("本节点开始处理");
+            logDebug("本节点开始处理");
             if (IS_TRUNK_FILE_BY_ID(trunkInfo)) {
                 if (result == ENOENT) {
                     logError("file: "__FILE__", line: %d, "\
@@ -1000,7 +1000,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
         redirect = fdfs_http_get_parameter("redirect", \
                         params, param_count);
         if (redirect != NULL) {
-            printf("XX,怎么开始redirect了 again,从其他地方跳转过来的吗");
+            logDebug("XX,怎么开始redirect了 again,从其他地方跳转过来的吗");
             logWarning("file: "__FILE__", line: %d, " \
                 "redirect again, url: %s", \
                 __LINE__, url);
@@ -1042,7 +1042,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             } else {
                 path_split_str = "";
             }
-            printf("XX,开始跳转，不自己处理，%s", response.redirect_url);
+            logDebug("XX,开始跳转，不自己处理，%s", response.redirect_url);
             response.redirect_url_len = snprintf(\
                 response.redirect_url, \
                 sizeof(response.redirect_url), \
@@ -1061,14 +1061,17 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             OUTPUT_HEADERS(pContext, (&response), HTTP_MOVETEMP);
             return HTTP_MOVETEMP;
         } else if (pContext->proxy_handler != NULL) {
-            printf("自己处理把，通过proxy handler处理，%s",   file_info.source_ip_addr);
+            //配置项response_mode = proxy，该模式的工作原理如同反向代理的做法，而仅仅使用源storage地址作为代理proxy的host，其余部分保持不变。
+            //其中proxy_handler方法来自ngx_http_fastdfs_module.c文件的ngx_http_fastdfs_proxy_handler方法
+            //其实现中设置了大量回调、变量，并最终调用代理请求方法，返回结果：
+            log("自己处理把，通过proxy handler处理，%s",   file_info.source_ip_addr);
             return pContext->proxy_handler(pContext->arg, \
                     file_info.source_ip_addr);
         }else{
-            printf("另外个情况........");
+            logDebug("另外个情况........");
         }
     }
-    printf("没考虑清楚，怎么会执行到这个地方");
+    logDebug("没考虑清楚，怎么会执行到这个地方");
     ext_name = fdfs_http_get_file_extension(true_filename, \
             filename_len, &ext_len);
     /*
@@ -1201,12 +1204,12 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
         ConnectionInfo storage_server;
         struct fdfs_download_callback_args callback_args;
         int64_t file_size;
-        printf("好像自己再来，%s",file_info.source_ip_addr);
+        logDebug("好像自己再来，%s",file_info.source_ip_addr);
         strcpy(storage_server.ip_addr, file_info.source_ip_addr);
         storage_server.port = the_storage_port;
         storage_server.sock = -1;
 
-        printf("但咋个端口是这个?%d",the_storage_port);
+        logDebug("但咋个端口是这个?%d",the_storage_port);
         callback_args.pContext = pContext;
         callback_args.pResponse = &response;
         callback_args.sent_bytes = 0;
