@@ -245,7 +245,7 @@ int fdfs_mod_init() {
 
         // 不存在的响应模式配置，redirect之外就是proxy
         pReponseMode = iniGetStrValue(NULL, "response_mode", &iniContext);
-        printf("pReponseMode：%s", &pReponseMode);
+        printf("pReponseMode：%s", pReponseMode);
         if (pReponseMode != NULL) {
             if (strcmp(pReponseMode, "redirect") == 0) {
                 response_mode = FDFS_MOD_REPONSE_MODE_REDIRECT;
