@@ -963,6 +963,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
         //logInfo("source ip addr: %s", file_info.source_ip_addr);
         //logInfo("create_timestamp: %d", file_info.create_timestamp);
 
+        // 先判断，是否是本节点的，并且（是否是本地ip或者已经同步过来的）
         if (bSameGroup && (is_local_host_ip(file_info.source_ip_addr)  || (file_info.create_timestamp > 0 && (time(NULL) -  file_info.create_timestamp > storage_sync_file_max_delay)))) {
             logDebug("本节点开始处理");
             if (IS_TRUNK_FILE_BY_ID(trunkInfo)) {
@@ -1021,6 +1022,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             return HTTP_INTERNAL_SERVER_ERROR;
         }
 
+        // 再判断 代理方式
         if (response_mode == FDFS_MOD_REPONSE_MODE_REDIRECT) {
 
             char *path_split_str;
@@ -1066,10 +1068,11 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             //配置项response_mode = proxy，该模式的工作原理如同反向代理的做法，而仅仅使用源storage地址作为代理proxy的host，其余部分保持不变。
             //其中proxy_handler方法来自ngx_http_fastdfs_module.c文件的ngx_http_fastdfs_proxy_handler方法
             //其实现中设置了大量回调、变量，并最终调用代理请求方法，返回结果：
-            logDebug("自己处理把，通过proxy handler处理，%s",   file_info.source_ip_addr);
+            logDebug("自己处理吧，通过proxy handler处理，%s",   file_info.source_ip_addr);
             return pContext->proxy_handler(pContext->arg, \
                     file_info.source_ip_addr);
         }else{
+            // 没代理组后一个情况
             logDebug("另外个情况........");
         }
     }
