@@ -245,6 +245,8 @@ int fdfs_mod_init() {
 
         // 不存在的响应模式配置，redirect之外就是proxy
         pReponseMode = iniGetStrValue(NULL, "response_mode", &iniContext);
+        logWarning("看得见我logWarning");
+        logInfo("看得见我logInfo");
         logDebug("pReponseMode：%s", pReponseMode);
         if (pReponseMode != NULL) {
             if (strcmp(pReponseMode, "redirect") == 0) {
