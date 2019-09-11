@@ -99,6 +99,7 @@ static int fdfs_load_groups_store_paths(IniContext *pItemContext)
 		return errno != 0 ? errno : ENOMEM;
 	}
 
+	// 便利处理group-n
 	for (i=0; i<group_count; i++)
 	{
 		sprintf(section_name, "group%d", i + 1);
@@ -112,6 +113,7 @@ static int fdfs_load_groups_store_paths(IniContext *pItemContext)
 			return ENOENT;
 		}
 
+		// 分组的storage 端口 ，注意没有ip地址，说明这个只支持本地的的group（单机节点）
 		group_store_paths[i].storage_server_port = iniGetIntValue( \
 			section_name, "storage_server_port", pItemContext, \
 			FDFS_STORAGE_SERVER_DEF_PORT);
@@ -127,7 +129,7 @@ static int fdfs_load_groups_store_paths(IniContext *pItemContext)
 				"can't be empty!", __LINE__, section_name);
 			return EINVAL;
 		}
-		
+		// 分组的store路径
 		group_store_paths[i].store_paths.paths = \
 			storage_load_paths_from_conf_file_ex(pItemContext, \
 			section_name, false, &group_store_paths[i].store_paths.count, \
@@ -177,8 +179,10 @@ int fdfs_mod_init()
 
 	url_have_group_name = iniGetBoolValue(NULL, "url_have_group_name", \
 						&iniContext, false);
+	//如果多组，通过多组的方式解析，如果单组单组的解析方式
 	if (group_count > 0)
 	{
+	    // 是否多Group支持
 		if (!url_have_group_name)
 		{
 			logError("file: "__FILE__", line: %d, "   \
@@ -190,6 +194,7 @@ int fdfs_mod_init()
 			break;
 		}
 
+		// 加载多group的配置
 		if ((result=fdfs_load_groups_store_paths(&iniContext)) != 0)
 		{
 			break;
@@ -198,7 +203,7 @@ int fdfs_mod_init()
 	else
 	{
 		char *pGroupName;
-
+        //获取组名
 		pGroupName = iniGetStrValue(NULL, "group_name", &iniContext);
 		if (pGroupName == NULL)
 		{
@@ -221,6 +226,7 @@ int fdfs_mod_init()
 			break;
 		}
 
+		// 路径检查
 		if ((result=storage_load_paths_from_conf_file(&iniContext)) != 0)
 		{
 			break;
@@ -261,7 +267,9 @@ int fdfs_mod_init()
 		break;
 	}
 
+	// 不存在的响应模式配置，redirect之外就是proxy
 	pReponseMode = iniGetStrValue(NULL, "response_mode", &iniContext);
+	printf("pReponseMode：%s",&pReponseMode);
 	if (pReponseMode != NULL)
 	{
 		if (strcmp(pReponseMode, "redirect") == 0)
@@ -341,6 +349,7 @@ int fdfs_mod_init()
 	}
 	else
 	{
+	    // group 列表打印
 		len = sprintf(buff, "group_name=%s, storage_server_port=%d, " \
 			"path_count=%d, ", my_group_name, \
 			storage_server_port, g_fdfs_store_paths.count);
@@ -754,6 +763,7 @@ static int fdfs_send_file_buffer(struct fdfs_http_context *pContext,
     return 0;
 }
 
+// 程序处理入口
 int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 {
 #define HTTPD_MAX_PARAMS   32
@@ -788,8 +798,8 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
     int i;
 	struct fdfs_http_response response;
 	FDFSFileInfo file_info;
-	bool bFileExists;
-	bool bSameGroup;  //if in my group
+	bool bFileExists;// 文件是否存在表示
+	bool bSameGroup;  //if in my group // 是否是本实例节点组的数据
 	bool bTrunkFile;
 	FDFSTrunkFullInfo trunkInfo;
 
@@ -847,10 +857,13 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 		memcpy(uri, url, uri_len+1);
 	}
 
+	// storage 端口
 	the_storage_port = storage_server_port;
 	param_count = http_parse_query(uri, params, HTTPD_MAX_PARAMS);
 	if (url_have_group_name)
 	{
+	    // 1 计算出是否是本节点负责的group，
+	    // 2 如果是，则取出store path
 		int group_name_len;
 
 		snprintf(file_id, sizeof(file_id), "%s", uri + 1);
@@ -896,6 +909,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 	}
 	else
 	{
+	    // url 不包含group直接访问
 		pStorePaths = &g_fdfs_store_paths;
 		bSameGroup = true;
 		file_id_without_group = uri + 1; //skip /
@@ -903,6 +917,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 			my_group_name, file_id_without_group);
 	}
 
+	printf(bSameGroup?"本节点请求":"不是本节点请求");
 	if (strlen(file_id_without_group) < 22)
 	{
 		logError("file: "__FILE__", line: %d, " \
@@ -913,6 +928,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 		return HTTP_BADREQUEST;
 	}
 
+	// 防盗链判断token
 	if (g_http_params.anti_steal_token)
 	{
 		char *token;
@@ -962,6 +978,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext)
 		}
 	}
 
+	// 文件名称，不包含group
 	filename = file_id_without_group;
 	filename_len = strlen(filename);
 
