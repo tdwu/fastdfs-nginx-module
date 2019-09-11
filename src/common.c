@@ -1066,7 +1066,7 @@ int fdfs_http_request_handler(struct fdfs_http_context *pContext) {
             //配置项response_mode = proxy，该模式的工作原理如同反向代理的做法，而仅仅使用源storage地址作为代理proxy的host，其余部分保持不变。
             //其中proxy_handler方法来自ngx_http_fastdfs_module.c文件的ngx_http_fastdfs_proxy_handler方法
             //其实现中设置了大量回调、变量，并最终调用代理请求方法，返回结果：
-            log("自己处理把，通过proxy handler处理，%s",   file_info.source_ip_addr);
+            logDebug("自己处理把，通过proxy handler处理，%s",   file_info.source_ip_addr);
             return pContext->proxy_handler(pContext->arg, \
                     file_info.source_ip_addr);
         }else{
